@@ -139,13 +139,16 @@ void MoveRegistry()
 		// Pull all tags from old to new registry
 		foreach (string tag in tags)
 		{
-			Console.WriteLine("Pulling " + repo + ":" + tag);
+			// Console.WriteLine("Pulling " + repo + ":" + tag);
 			// Pull image
 			// Run command: $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}"
 			var stringPullCommand = $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}";
 
 			// Run command
-			RunCommand(stringPullCommand);
+			RunDockerCommand(oldDocker, stringPullCommand);
+
+			// Tagging
+			// Console.WriteLine($"Tagging {oldDocker.DOMAIN}/{repo}:{tag} -> {newDocker.DOMAIN}/{repo}:{tag}");
 
 			// Tag image
 			// Run command: $"docker tag {oldDocker.DOMAIN}/{repo}:{tag} {newDocker.DOMAIN}/{repo}:{tag}"
@@ -154,14 +157,17 @@ void MoveRegistry()
 			// Run command
 			RunCommand(stringTagCommand);
 
+			// Pushing
+			// Console.WriteLine($"Pushing {newDocker.DOMAIN}/{repo}:{tag}");
+
 			// Push image
 			// Run command: $"docker push {newDocker.DOMAIN}/{repo}:{tag}"
 			var stringPushCommand = $"docker push {newDocker.DOMAIN}/{repo}:{tag}";
 
 			// Run command
-			RunCommand(stringPushCommand);
+			RunDockerCommand(newDocker, stringPushCommand);
 
-			// ReadKey for debugging
+			// readKey
 			Console.ReadKey();
 		}
 	}
@@ -203,24 +209,20 @@ void RunCommand(string command)
 		{
 			FileName = "/bin/zsh",
 			Arguments = $"-c \"{command}\"",
-			UseShellExecute = false,
-			RedirectStandardOutput = true,
-			CreateNoWindow = true
+			UseShellExecute = true,
+			// RedirectStandardOutput = true,
+			CreateNoWindow = false,
+			WindowStyle = ProcessWindowStyle.Normal
 		}
 	};
 	process.Start();
-
-	// Print output
-	while (!process.StandardOutput.EndOfStream)
-	{
-		string line = process.StandardOutput.ReadLine();
-		Console.WriteLine(line);
-	}
 }
 
 // Function to select action
 void SelectAction()
 {
+
+
 
     // If DockerAPI are defined, print the URL
     if (oldDocker != null && newDocker != null)

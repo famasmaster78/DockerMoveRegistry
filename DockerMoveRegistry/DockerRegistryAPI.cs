@@ -26,7 +26,7 @@ namespace DockerMoveRegistry
 			{
             	client.BaseAddress = new Uri(DOMAIN);
 			}else if(!DOMAIN.StartsWith("http://") && !DOMAIN.StartsWith("https://")){
-				client.BaseAddress = new Uri("https://" + DOMAIN);
+				client.BaseAddress = new Uri("http://" + DOMAIN);
 			}
         }
 
