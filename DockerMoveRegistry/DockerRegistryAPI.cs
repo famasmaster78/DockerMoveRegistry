@@ -9,17 +9,32 @@ namespace DockerMoveRegistry
 
         // HTTP Client
         public HttpClient client;
+		public string DOMAIN;
+
+		// Username and password
+		public string username;
+		public string password;
 
         // Constructor
-        public DockerAPI(string URL)
+        public DockerAPI(string DOMAIN)
         {
+			this.DOMAIN = DOMAIN;
             client = new HttpClient();
-            client.BaseAddress = new Uri(URL);
+
+			// Set base address, check if it has http or https defined
+			if (DOMAIN.StartsWith("http://") && !DOMAIN.StartsWith("https://"))
+			{
+            	client.BaseAddress = new Uri(DOMAIN);
+			}else if(!DOMAIN.StartsWith("http://") && !DOMAIN.StartsWith("https://")){
+				client.BaseAddress = new Uri("https://" + DOMAIN);
+			}
         }
 
         // Set login credentials
         public void SetCredentials(string username, string password)
         {
+			this.username = username;
+			this.password = password;
             string credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(username + ":" + password));
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
         }

@@ -1,5 +1,8 @@
 ﻿
 // Import docker registry class
+using System.Diagnostics;
+using DockerMoveRegistry;
+
 DockerMoveRegistry.DockerAPI? oldDocker = null;
 DockerMoveRegistry.DockerAPI? newDocker = null;
 
@@ -16,8 +19,8 @@ void CheckDockerAPI()
     {
         Console.WriteLine("Please define the old Docker registry API");
         Console.Write("Enter the URL: ");
-        string oldURL = Console.ReadLine();
-        oldDocker = new DockerMoveRegistry.DockerAPI(oldURL);
+        string oldDomain = Console.ReadLine();
+        oldDocker = new DockerMoveRegistry.DockerAPI(oldDomain);
 
         // Do you want to set credentials?
         Console.Write("Do you want to set credentials? (y/n): ");
@@ -103,8 +106,8 @@ void CheckDockerAPI()
     }
 
     // Log docker api
-    Console.WriteLine("Old Docker registry: " + oldDocker.client.BaseAddress);
-    Console.WriteLine("New Docker registry: " + newDocker.client.BaseAddress);
+    Console.WriteLine("Old Docker registry: " + oldDocker.DOMAIN);
+    Console.WriteLine("New Docker registry: " + newDocker.DOMAIN);
 }
 
 // Get credentials
@@ -117,6 +120,104 @@ void CheckDockerAPI()
     return (username, password);
 }
 
+// Move registry
+void MoveRegistry()
+{
+	// Check if DockerAPI is defined
+	CheckDockerAPI();
+
+	// Get all repositories for each registry
+	List<string> oldRepos = oldDocker.GetRepositories().Result;
+	List<string> newRepos = newDocker.GetRepositories().Result;
+
+	// Pull all repositories from old to new registry
+	foreach (string repo in oldRepos)
+	{
+		// Pull all tags for the repository
+		List<string> tags = oldDocker.GetTags(repo).Result;
+
+		// Pull all tags from old to new registry
+		foreach (string tag in tags)
+		{
+			Console.WriteLine("Pulling " + repo + ":" + tag);
+			// Pull image
+			// Run command: $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}"
+			var stringPullCommand = $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}";
+
+			// Run command
+			RunCommand(stringPullCommand);
+
+			// Tag image
+			// Run command: $"docker tag {oldDocker.DOMAIN}/{repo}:{tag} {newDocker.DOMAIN}/{repo}:{tag}"
+			var stringTagCommand = $"docker tag {oldDocker.DOMAIN}/{repo}:{tag} {newDocker.DOMAIN}/{repo}:{tag}";
+
+			// Run command
+			RunCommand(stringTagCommand);
+
+			// Push image
+			// Run command: $"docker push {newDocker.DOMAIN}/{repo}:{tag}"
+			var stringPushCommand = $"docker push {newDocker.DOMAIN}/{repo}:{tag}";
+
+			// Run command
+			RunCommand(stringPushCommand);
+
+			// ReadKey for debugging
+			Console.ReadKey();
+		}
+	}
+}
+
+// Functionto RunDocerCommand, this will login to the registry if credentials are set
+void RunDockerCommand(DockerAPI docker, string command)
+{
+	// Check if credentials are set
+	if (docker.client.DefaultRequestHeaders.Authorization != null)
+	{
+		// Run command
+		RunCommand(command);
+	}
+	else
+	{
+
+		// Login to registry
+		// Run command: $"docker login {docker.DOMAIN} -u {username} -p {password}"
+		var stringLoginCommand = $"docker login {docker.DOMAIN} -u {docker.username} -p {docker.password}";
+
+		// Run command
+		RunCommand($"{stringLoginCommand} && {command}");
+
+	}
+}
+
+// Function to run command and print output
+void RunCommand(string command)
+{
+
+	// Log running command
+	Console.WriteLine("Running command: " + command);
+
+	// Run command
+	var process = new Process
+	{
+		StartInfo = new ProcessStartInfo
+		{
+			FileName = "/bin/zsh",
+			Arguments = $"-c \"{command}\"",
+			UseShellExecute = false,
+			RedirectStandardOutput = true,
+			CreateNoWindow = true
+		}
+	};
+	process.Start();
+
+	// Print output
+	while (!process.StandardOutput.EndOfStream)
+	{
+		string line = process.StandardOutput.ReadLine();
+		Console.WriteLine(line);
+	}
+}
+
 // Function to select action
 void SelectAction()
 {
@@ -124,8 +225,8 @@ void SelectAction()
     // If DockerAPI are defined, print the URL
     if (oldDocker != null && newDocker != null)
     {
-        Console.WriteLine("Old Docker registry: " + oldDocker.client.BaseAddress);
-        Console.WriteLine("New Docker registry: " + newDocker.client.BaseAddress);
+        Console.WriteLine("Old Docker registry: " + oldDocker.DOMAIN);
+        Console.WriteLine("New Docker registry: " + newDocker.DOMAIN);
     }
 
     // Show numbered list of possibilities
@@ -145,7 +246,9 @@ void SelectAction()
     if (input == "1")
     {
         // Move a registry
-        Console.WriteLine("Move a registry");
+		CheckDockerAPI();
+
+		MoveRegistry();
     }
     else if (input == "2")
     {
@@ -170,7 +273,11 @@ void SelectAction()
             {
                 Console.WriteLine("Pulling " + repo + ":" + tag);
                 // Pull image
-                // Run command: $"docker pull {oldDocker.client.BaseAddress}/{repo}:{tag}"
+                // Run command: $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}"
+				var stringPullCommand = $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}";
+
+				// Run command
+				RunCommand(stringPullCommand);
 
             }
         }
