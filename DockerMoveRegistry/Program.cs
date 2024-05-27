@@ -80,17 +80,17 @@ void CheckDockerAPI()
             bool credentialsSet = false;
 
             // Check if credentials are already set on oldDocker
-            if (oldDocker != null && oldDocker.client.DefaultRequestHeaders.Authorization != null)
+            if (oldDocker != null && oldDocker.username != null && oldDocker.password != null)
             {
 
                 // Do you want to use the same credentials as oldDocker?
-                Console.Write("Do you want to use the same credentials as new Docker Registry? (y/n): ");
+                Console.Write($"Do you want to use the same credentials as old Docker Registry ({oldDocker.username})? (y/n): ");
 
                 string input2 = Console.ReadLine();
 
                 if (input2 == "y")
                 {
-                    newDocker.client.DefaultRequestHeaders.Authorization = oldDocker.client.DefaultRequestHeaders.Authorization;
+                    newDocker.SetCredentials(oldDocker.username, oldDocker.password);
                     credentialsSet = true;
                 }
 
@@ -133,16 +133,23 @@ void MoveRegistry()
 	// Pull all repositories from old to new registry
 	foreach (string repo in oldRepos)
 	{
-		// Pull all tags for the repository
-		List<string> tags = oldDocker.GetTags(repo).Result;
+        Console.WriteLine();
+        Console.WriteLine($"##################### MOVING {repo} #####################");
+
+        // Pull all tags for the repository
+        List<string> tags = oldDocker.GetTags(repo).Result;
 
 		// Pull all tags from old to new registry
 		foreach (string tag in tags)
 		{
-			// Console.WriteLine("Pulling " + repo + ":" + tag);
-			// Pull image
-			// Run command: $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}"
-			var stringPullCommand = $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}";
+
+            Console.WriteLine();
+            Console.WriteLine($"---------- MOVING :{tag} ----------");
+
+            // Console.WriteLine("Pulling " + repo + ":" + tag);
+            // Pull image
+            // Run command: $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}"
+            var stringPullCommand = $"docker pull {oldDocker.DOMAIN}/{repo}:{tag}";
 
 			// Run command
 			RunDockerCommand(oldDocker, stringPullCommand);
@@ -167,17 +174,23 @@ void MoveRegistry()
 			// Run command
 			RunDockerCommand(newDocker, stringPushCommand);
 
-			// readKey
-			Console.ReadKey();
-		}
-	}
+            // readKey
+            // Console.ReadKey();
+
+            Console.WriteLine($"!---------- MOVING :{tag} ----------!");
+
+        }
+
+        Console.WriteLine($"!##################### MOVING {repo} #####################!");
+
+    }
 }
 
 // Functionto RunDocerCommand, this will login to the registry if credentials are set
 void RunDockerCommand(DockerAPI docker, string command)
 {
 	// Check if credentials are set
-	if (docker.client.DefaultRequestHeaders.Authorization != null)
+	if (docker.client.DefaultRequestHeaders.Authorization == null)
 	{
 		// Run command
 		RunCommand(command);
@@ -187,10 +200,10 @@ void RunDockerCommand(DockerAPI docker, string command)
 
 		// Login to registry
 		// Run command: $"docker login {docker.DOMAIN} -u {username} -p {password}"
-		var stringLoginCommand = $"docker login {docker.DOMAIN} -u {docker.username} -p {docker.password}";
+		var stringLoginCommand = $"echo '{docker.password}' | docker login {docker.DOMAIN} --username {docker.username} --password-stdin";
 
 		// Run command
-		RunCommand($"{stringLoginCommand} && {command}");
+		RunCommand($"{stringLoginCommand}; {command}");
 
 	}
 }
@@ -207,15 +220,26 @@ void RunCommand(string command)
 	{
 		StartInfo = new ProcessStartInfo
 		{
-			FileName = "/bin/zsh",
+			FileName = "powershell.exe",
 			Arguments = $"-c \"{command}\"",
-			UseShellExecute = true,
-			// RedirectStandardOutput = true,
+			UseShellExecute = false,
+			RedirectStandardOutput = true,
 			CreateNoWindow = false,
-			WindowStyle = ProcessWindowStyle.Normal
+			// WindowStyle = ProcessWindowStyle.Normal
 		}
 	};
 	process.Start();
+
+
+    process.WaitForExit();
+
+    // Check if process exited with error
+    if (process.ExitCode != 0)
+    {
+        Console.WriteLine("Error: Command exited with error code " + process.ExitCode);
+        Console.WriteLine("Press any key to continue");
+        Console.ReadKey();
+    }
 }
 
 // Function to select action
@@ -370,6 +394,7 @@ void SelectAction()
 
             // Get repository name
             string repository = newRepos[int.Parse(repositoryNumber)];
+
 
             Console.WriteLine(repository);
 

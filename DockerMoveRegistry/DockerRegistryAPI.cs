@@ -22,7 +22,7 @@ namespace DockerMoveRegistry
             client = new HttpClient();
 
 			// Set base address, check if it has http or https defined
-			if (DOMAIN.StartsWith("http://") && !DOMAIN.StartsWith("https://"))
+			if (DOMAIN.StartsWith("http://") && DOMAIN.StartsWith("https://"))
 			{
             	client.BaseAddress = new Uri(DOMAIN);
 			}else if(!DOMAIN.StartsWith("http://") && !DOMAIN.StartsWith("https://")){
